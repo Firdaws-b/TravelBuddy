@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.config import settings
+from config.settings import settings
 from src.routes import hotel_routes
 
 app = FastAPI(title="TravelBuddy API", version="1.0.0")
