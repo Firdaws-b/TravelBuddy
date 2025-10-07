@@ -1,4 +1,3 @@
-```markdown
 
 ## 1. Create and Activate a Virtual Environment
 
@@ -45,5 +44,5 @@ http://127.0.0.1:8000/docs
 ```bash
 pytest -v
 ```
-```
+
 
