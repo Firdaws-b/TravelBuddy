@@ -6,12 +6,10 @@ from src.services.nlp_service import extract_hotel_search_params
 from config.databse import hotel_bookings_collection
 from src.models.hotel_model import BookingCreate
 from src.services.hotel_service import (
-    search_hotels, 
-    create_booking_record, 
+    search_hotels,  
     get_user_by_id, 
     create_booking_for_user,
-    get_bookings_by_user_id,
-    upsert_hotels)
+    get_bookings_by_user_id)
 
 
 router = APIRouter()
@@ -41,13 +39,13 @@ def hotel_search_with_nlp(
         raise HTTPException(status_code=500, detail=str(e))
     
 
-@router.post("/hotels/{hotel_id}/bookings/{user_id}", tags=["hotels"])
+@router.post("/users/{user_id}/hotel-bookings", tags=["hotels"])
 def create_user_booking(
-    hotel_id: str = Path(..., description="Hotel place_id / hotel_id"),
     user_id: str = Path(..., description="MongoDB ObjectId of the user"),
     booking_data: BookingCreate = Body(
         ...,
         example={
+            "hotel_id": "ChIJAfBnl0EayUwRqA8gLblTR_4",
             "check_in": "2025-11-15",
             "check_out": "2025-11-20",
             "price": 300.00,
@@ -62,7 +60,7 @@ def create_user_booking(
             raise HTTPException(status_code=404, detail="User not found")
 
         # (Optional) ensure hotel exists locally; you can add a quick lookup if you want
-        new_booking = create_booking_for_user(user, hotel_id, booking_data.dict())
+        new_booking = create_booking_for_user(user, booking_data.dict())
 
         return {
             "status": "success",
@@ -75,7 +73,7 @@ def create_user_booking(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/hotels/bookings/{user_id}", tags=["hotels"])
+@router.get("/users/{user_id}/hotel-bookings", tags=["hotels"])
 def get_user_bookings(user_id: str = Path(..., description="MongoDB ObjectId of the user")):
     try:
         user = get_user_by_id(user_id)
@@ -102,7 +100,7 @@ def get_user_bookings(user_id: str = Path(..., description="MongoDB ObjectId of 
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/hotels/{hotel_id}/bookings/{user_id}", tags=["hotels"])
+@router.delete("/users/{user_id}/hotel-bookings/{hotel_id}", tags=["hotels"])
 def delete_booking(
     hotel_id: str = Path(..., description="Hotel ID (place_id)"),
     user_id: str = Path(..., description="MongoDB ObjectId of the user")

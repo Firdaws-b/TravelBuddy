@@ -49,9 +49,7 @@ def search_hotels(q, check_in_date, check_out_date, adults, children, currency, 
             "reviews": hotel.get("reviews"),
             "price": hotel.get("rate_per_night", {}).get("extracted_lowest"),
             "currency": data.get("search_parameters", {}).get("currency"),
-            "city": q, 
-            "check_in": params.get("check_in_date"),
-            "check_out": params.get("check_out_date")
+            "city": q
         })
 
     upsert_hotels(hotels_summary)
@@ -59,10 +57,10 @@ def search_hotels(q, check_in_date, check_out_date, adults, children, currency, 
 
 
 
-def create_booking_for_user(user: dict, hotel_id: str, booking_data: dict) -> dict:
+def create_booking_for_user(user: dict, booking_data: dict) -> dict:
     booking_doc = {
         "user_id": str(user["_id"]),
-        "hotel_id": hotel_id,                                
+        "hotel_id": booking_data["hotel_id"],                                
         "check_in": booking_data["check_in"],
         "check_out": booking_data["check_out"],
         "price": booking_data["price"],
@@ -116,9 +114,9 @@ def upsert_hotels(hotels: list):
 #                       DB OPERATIONS 
 #
 #############################################################
-def create_booking_record(booking_doc: dict):
-    result = hotel_bookings_collection.insert_one(booking_doc)
-    return str(result.inserted_id)
+# def create_booking_record(booking_doc: dict):
+#     result = hotel_bookings_collection.insert_one(booking_doc)
+#     return str(result.inserted_id)
 
 def list_bookings_by_user(user_id: str):
     bookings = []
