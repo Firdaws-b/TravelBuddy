@@ -5,6 +5,8 @@ from config.settings import settings
 client = MongoClient(settings.MONGO_URI, tlsCAFile=certifi.where())
 db = client["TravelBuddy"]
 users_collection = db["Users"]
+hotels_collection = db["hotels"]
+hotel_bookings_collection = db["hotel_bookings"] 
 try:
     client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
