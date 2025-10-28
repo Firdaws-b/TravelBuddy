@@ -7,7 +7,7 @@ from sympy.physics.units import temperature
 from word2number import w2n
 from openai import OpenAI
 
-from src.schemas import FlightsListSearchRequest, FlightInfoRequest
+from src.models import FlightsListSearchRequest, FlightInfoRequest
 
 load_dotenv()
 open_ai_key = os.getenv("OPENAI_CLIENT_ID")
@@ -151,7 +151,7 @@ class FlightQueryParser:
                 "departure_date": ""
             }
         return FlightInfoRequest(
-            flight_number=data_json.get("flight_number", ""),
+            flight_number=str(data_json.get("flight_number", "")),
             airline=data_json.get("airline", ""),
             departure_date=data_json.get("departure_date", ""),
         )

@@ -1,20 +1,17 @@
 import os
 from datetime import datetime
-from multiprocessing.reduction import send_handle
-from typing import Union
+from typing import Union, List
 
 from dotenv import load_dotenv
-from mpmath.libmp import to_int
-from word2number import w2n
 
-from src.schemas.flights_schemas import (
+from config.databse import flights_collection
+from src.models.flights_model import (
     FlightsListSearchRequest,
     FlightsListSearchResponse,
     FlightInfoResponse,
     FlightInfoRequest,
 )
 from amadeus import Client, ResponseError
-import httpx
 
 from src.utils.parser import FlightQueryParser
 
@@ -109,7 +106,7 @@ class FlightsService:
 
         })
         try:
-            response = self.amadeus.flight.status.get(
+            response = self.amadeus.schedule.flights.get(
                 carrierCode=flight_info_request.airline,
                 flightNumber=flight_info_request.flight_number,
                 scheduledDepartureDate=flight_info_request.departure_date,
@@ -117,21 +114,35 @@ class FlightsService:
             flight_data = response.data
         except ResponseError as error:
             print("Error in the Amadeus API request:", error)
+            return []
         flight_info = flight_data[0]
 
         flight = FlightInfoResponse(
-            flight_number=flight_info.get("flightNumber"),
-            airline=flight_info.get("carrier", {}).get("name", flight_info_request.airline),
-            status=flight_info.get("status"),
-            departure_airport=flight_info.get("departure", {}).get("iataCode"),
-            arrival_airport=flight_info.get("arrival", {}).get("iataCode"),
-            scheduled_departure=flight_info.get("departure", {}).get("scheduledTime"),
-            scheduled_arrival=flight_info.get("arrival", {}).get("scheduledTime"),
-            actual_departure=flight_info.get("departure", {}).get("actualTime") or "Scheduled only",
-            actual_arrival=flight_info.get("arrival", {}).get("actualTime") or "Scheduled only",
-            terminal_departure=flight_info.get("departure", {}).get("terminal") or "Not assigned yet",
-            terminal_arrival=flight_info.get("arrival", {}).get("terminal") or "Not assigned yet",
-            gate_departure=flight_info.get("departure", {}).get("gate") or "Not assigned yet",
-            gate_arrival=flight_info.get("arrival", {}).get("gate") or "Not assigned yet",
+            flight_number=str(flight_info["flightDesignator"]["flightNumber"]),
+            airline=str(flight_info["flightDesignator"]["carrierCode"]),
+            status="Scheduled",
+            departure_airport=str(flight_info["flightPoints"][0]["iataCode"]),
+            arrival_airport=str(flight_info["flightPoints"][-1]["iataCode"]),
+            scheduled_departure=str(flight_info["flightPoints"][0].get("departure", {}).get("timings", [{}])[0].get("value", "Unknown")),
+            scheduled_arrival=str(flight_info["flightPoints"][-1].get("arrival", {}).get("timings", [{}])[0].get("value", "Unknown")),
+            departure_time=str(flight_info["flightPoints"][0].get("departure", {}).get("timings", [{}])[0].get("value", "Unknown")),
+            arrival_time=str(flight_info["flightPoints"][-1].get("arrival", {}).get("timings", [{}])[0].get("value", "Unknown")),
+            duration=str(flight_info.get("segments", [{}])[0].get("scheduledSegmentDuration") or flight_info.get("legs", [{}])[0].get("scheduledLegDuration") or "Unknown"),
+            actual_departure = "Scheduled only",
+            actual_arrival = "Scheduled only",
+            terminal_departure= "Not assigned yet",
+            terminal_arrival= "Not assigned yet",
+            gate_departure= "Not assigned yet",
+            gate_arrival= "Not assigned yet",
         )
         return flight
+    # Save flight search list in the databse
+    async def save_flights_list(self,search_query:str, flights: List[dict], user_id: str=None):
+        document = {
+            "user_id": user_id,
+            "query": search_query,
+            "flights": [f.dict() for f in flights],
+            "searched_at": datetime.now(),
+        }
+        result = flights_collection.insert_one(document)
+        return str(result.inserted_id)

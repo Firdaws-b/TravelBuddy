@@ -1,9 +1,8 @@
 
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 
-from src.schemas import FlightInfoResponse
-from src.schemas.flights_schemas import FlightsListSearchRequest, FlightsListSearchResponse
+from src.models.flights_model import FlightsListSearchResponse, FlightInfoResponse
 from src.services.flights_service import FlightsService
 
 
@@ -14,7 +13,10 @@ service = FlightsService()
 @router.get("/", response_model=list[FlightsListSearchResponse])
 async def get_flights(query: str = Query(..., description="Enter your flight search query")):
     print("HELLO FROM FLIGHT LIST  ROUTER")
-    return await service.search_flights_list(query)
+    flights = await service.search_flights_list(query)
+    # Save the flights list in DB
+    await service.save_flights_list(query,flights)
+    return flights
 # 2nd API Call:
 @router.get("/flight_number", response_model = FlightInfoResponse)
 async def get_flight_info(query: str = Query(..., description="Enter your flight search query about info")):
