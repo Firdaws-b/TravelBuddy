@@ -20,7 +20,9 @@ def create_user(email, password, first_name, last_name):
         "password": hash_password(password),
         "first_name": first_name,
         "last_name": last_name,
-        "role": "user"})
+        "role": "user",
+        "preferences": {"interests": [],"budget": None}
+        })
     return {"msg": "User created successfully"}
 
 def get_user(email):
@@ -68,9 +70,3 @@ def update_user_function(user_id, user_data: UpdateUser):
     if update_fields:
         users_collection.update_one({"_id": object_id}, {"$set":update_fields})
         return {"User data updated successfully !"}
-
-
-
-
-
-
