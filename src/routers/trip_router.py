@@ -28,7 +28,7 @@ async def update_trip(trip_id: str, trip:UpdateTripModel):
 
 
 
-@router.delete("/{trip_id}", response_model=ItineraryDayModel)
+@router.delete("/{trip_id}", response_model=TripSummaryModel)
 def cancel_trip(trip_id: str):
     return cancel_trip_service(trip_id)
 
