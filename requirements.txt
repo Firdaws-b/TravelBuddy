@@ -7,6 +7,12 @@ pydantic-settings>=2.11.0
 pydantic~=2.11.9
 passlib
 jwt
+transformers
+TensorFlow~=2.20.0
+tf-keras~=2.20.1
+langchain~=0.3.20
+langchain-openai~=0.3.8
+argon2-cffi~=25.1.0
 openai~=1.50.0
 dnspython==2.6.1
 uvicorn[standard]==0.30.1

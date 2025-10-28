@@ -70,6 +70,10 @@ def update_user_function(user_id, user_data: UpdateUser):
         return {"User data updated successfully !"}
 
 
+# def get_all_trips_service(user_id):
+#     if users_collection.find_one({"user_id": user_id}):
+#
+
 
 
 
