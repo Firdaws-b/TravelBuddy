@@ -2,9 +2,10 @@ from datetime import datetime
 from pydantic import BaseModel, Field, validator
 
 class BookingCreate(BaseModel):
+    hotel_id: str = Field(..., example="ChIJAfBnl0EayUwRqA8gLblTR_4")
     check_in: str = Field(..., example="2025-11-15")
     check_out: str = Field(..., example="2025-11-20")
-    price: float = Field(..., gt=0, example=500.00)
+    price: float = Field(..., gt=0, example=300.00)
     currency: str = Field(..., min_length=3, max_length=3, example="CAD")
 
     @validator("check_out")

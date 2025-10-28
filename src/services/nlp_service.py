@@ -11,23 +11,26 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def extract_hotel_search_params(user_input: str):
     """
     Extracts hotel search parameters using OpenAI + dateparser.
-    Handles relative phrases like 'tomorrow', 'next weekend', etc.
     """
     prompt = f"""
     Extract hotel search parameters from this text:
     "{user_input}"
 
-    Respond ONLY with valid JSON in this structure:
+    Return ONLY a valid JSON object in this structure:
     {{
-      "q": "city",
-      "check_in_date": "string (may be a relative expression like 'tomorrow')",
-      "check_out_date": "string (may be a relative expression like 'next week')",
-      "adults": number,
-      "children": number,
-      "currency": "USD",
-      "gl": "us",
-      "hl": "en"
+    "q": "city name (string)",
+    "check_in_date": "exact date or phrase for check-in",
+    "check_out_date": "exact date or phrase for check-out",
+    "adults": number (default 1),
+    "children": number (default 0),
+    "currency": "CAD",
+    "gl": "us",
+    "hl": "en"
     }}
+
+    - If the input contains a date range like "from Jan 5th to 7th", use
+    "check_in_date": "January 5th" and "check_out_date": "January 7th".
+    - If only one date is given, assume 1 night stay.
     """
 
     response = client.chat.completions.create(
@@ -78,7 +81,7 @@ def extract_hotel_search_params(user_input: str):
     # Other safe defaults
     data["adults"] = data.get("adults", 2)
     data["children"] = data.get("children", 0)
-    data["currency"] = data.get("currency", "USD")
+    data["currency"] = data.get("currency", "CAD")
     data["gl"] = data.get("gl", "us")
     data["hl"] = data.get("hl", "en")
 
