@@ -9,7 +9,7 @@ router = APIRouter(prefix="/trips", tags=["trips"])
 @router.post("/", response_model=PlannedTripModel)
 async def create_trip(trip:PlanATrip):
     planned_trip = await plan_trip_service(trip.destination,trip.budget,trip.duration,trip.number_of_travelers,trip.user_email_address, trip.date)
-    return {"Planned Trip": planned_trip}
+    return planned_trip
 
 # Return all trips
 @router.get("/", response_model=list[TripSummaryModel])

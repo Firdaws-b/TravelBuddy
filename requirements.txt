@@ -14,3 +14,4 @@ langchain~=0.3.20
 langchain-openai~=0.3.8
 uvicorn
 dnspython==2.6.1
+argon2-cffi~=25.1.0
