@@ -1,5 +1,5 @@
 # fastapi==0.110.0
-# uvicorn==0.29.0
+uvicorn==0.29.0
 # pydantic==2.11.0
 # pydantic-settings>=2.11.0
 
@@ -13,7 +13,7 @@ python-dotenv>=1.0.1
 #motor>=3.5.1             # async MongoDB driver
 huggingface-hub>=0.25.2  # HF Inference Client
 numpy>=1.26.4
-
+dnspython
 pydantic~=2.11.9
 passlib
 jwt
