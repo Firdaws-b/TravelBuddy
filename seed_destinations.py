@@ -96,51 +96,52 @@ def seed():
     destinations_collection.delete_many({})  # clear existing
     result_dest = destinations_collection.insert_many(destinations)
     print(f"Inserted {len(result_dest.inserted_ids)} destinations.")
+    
 
-    # ---------- Seed Example Users ----------
-    users = [
-        {
-            "email": "beachlover@example.com",
-            "password": hash_password("password123"),
-            "first_name": "Maya",
-            "last_name": "Santos",
-            "role": "user",
-            "preferences": {
-                "interests": ["beach", "nightlife", "tropical"],
-                "budget": 1300
-            }
-        },
-        {
-            "email": "culturefan@example.com",
-            "password": hash_password("password123"),
-            "first_name": "Kenji",
-            "last_name": "Tanaka",
-            "role": "user",
-            "preferences": {
-                "interests": ["culture", "temples", "calm"],
-                "budget": 2200
-            }
-        },
-        {
-            "email": "partygoer@example.com",
-            "password": hash_password("password123"),
-            "first_name": "Alex",
-            "last_name": "Rivera",
-            "role": "user",
-            "preferences": {
-                "interests": ["nightlife", "resorts", "party"],
-                "budget": 1500
-            }
-        }
-    ]
+#     # ---------- Seed Example Users ----------
+#     users = [
+#         {
+#             "email": "beachlover@example.com",
+#             "password": hash_password("password123"),
+#             "first_name": "Maya",
+#             "last_name": "Santos",
+#             "role": "user",
+#             "preferences": {
+#                 "interests": ["beach", "nightlife", "tropical"],
+#                 "budget": 1300
+#             }
+#         },
+#         {
+#             "email": "culturefan@example.com",
+#             "password": hash_password("password123"),
+#             "first_name": "Kenji",
+#             "last_name": "Tanaka",
+#             "role": "user",
+#             "preferences": {
+#                 "interests": ["culture", "temples", "calm"],
+#                 "budget": 2200
+#             }
+#         },
+#         {
+#             "email": "partygoer@example.com",
+#             "password": hash_password("password123"),
+#             "first_name": "Alex",
+#             "last_name": "Rivera",
+#             "role": "user",
+#             "preferences": {
+#                 "interests": ["nightlife", "resorts", "party"],
+#                 "budget": 1500
+#             }
+#         }
+#     ]
 
-    users_collection = db["Users"]
-    users_collection.delete_many({})  # clear existing
-    result_users = users_collection.insert_many(users)
-    print(f"Inserted {len(result_users.inserted_ids)} users with preferences.")
+#     users_collection = db["Users"]
+#     users_collection.delete_many({})  # clear existing
+#     result_users = users_collection.insert_many(users)
+#     print(f"Inserted {len(result_users.inserted_ids)} users with preferences.")
 
-    print("\nUser IDs for testing personalization:")
-    for user, user_id in zip(users, result_users.inserted_ids):
-        print(f"- {user['email']}: {user_id}")
+#     print("\nUser IDs for testing personalization:")
+#     for user, user_id in zip(users, result_users.inserted_ids):
+#         print(f"- {user['email']}: {user_id}")
 if __name__ == "__main__":
     seed()
