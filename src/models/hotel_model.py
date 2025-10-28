@@ -1,17 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, validator
 
-class HotelSearchInput(BaseModel):
-    user_input: str = Field(
-        ...,
-        example="Find hotels in Montreal from November 15 to November 20 for 2 adults",
-        description="A natural language query to search hotels."
-    )
-
-class HotelBookingInput(BaseModel):
-    hotel_name: str = Field(..., example="Hilton Downtown")
-    city: str = Field(..., example="Montréal")
-    address: str = Field(..., example="123 Rue Sainte-Catherine O, Montréal, QC H3B 1A7")
+class BookingCreate(BaseModel):
     check_in: str = Field(..., example="2025-11-15")
     check_out: str = Field(..., example="2025-11-20")
     price: float = Field(..., gt=0, example=500.00)

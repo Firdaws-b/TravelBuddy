@@ -1,10 +1,11 @@
 import requests
 import uuid 
 
+from pymongo import UpdateOne
 from bson import ObjectId
 from datetime import datetime, timezone
 from config.settings import Settings
-from config.databse import users_collection, hotels_collection
+from config.databse import users_collection, hotels_collection, hotel_bookings_collection
 
 RAPIDAPI_HOST = Settings.RAPIDAPI_HOST
 RAPIDAPI_KEY = Settings.RAPIDAPI_KEY
@@ -30,35 +31,48 @@ def search_hotels(q, check_in_date, check_out_date, adults, children, currency, 
         "hl": hl
     }
 
-    # remove None values
     params = {k: v for k, v in params.items() if v is not None}
-
     response = requests.get(BASE_URL, headers=headers, params=params)
-
     if response.status_code != 200:
         raise Exception(f"Error from RapidAPI: {response.status_code} - {response.text}")
 
-    return response.json()
+    data = response.json()
+
+    # Extract minimal hotel info to store/search
+    hotels_summary = []
+    for hotel in data.get("properties", []):
+        hotels_summary.append({
+            "hotel_id": hotel.get("place_id"), 
+            "name": hotel.get("name"),
+            "description": hotel.get("description"),
+            "rating": hotel.get("overall_rating"),
+            "reviews": hotel.get("reviews"),
+            "price": hotel.get("rate_per_night", {}).get("extracted_lowest"),
+            "currency": data.get("search_parameters", {}).get("currency"),
+            "city": q, 
+            "check_in": params.get("check_in_date"),
+            "check_out": params.get("check_out_date")
+        })
+
+    upsert_hotels(hotels_summary)
+    return data
 
 
-def create_booking_for_user(user: dict, booking_data: dict) -> dict:
+
+def create_booking_for_user(user: dict, hotel_id: str, booking_data: dict) -> dict:
     booking_doc = {
         "user_id": str(user["_id"]),
-        "guest_name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
-        "email": user.get("email"),
-        "phone": user.get("phone"),
-        "hotel_name": booking_data.get("hotel_name"),
-        "check_in": booking_data.get("check_in"),
-        "check_out": booking_data.get("check_out"),
-        "price": booking_data.get("price"),
-        "currency": booking_data.get("currency"),
+        "hotel_id": hotel_id,                                
+        "check_in": booking_data["check_in"],
+        "check_out": booking_data["check_out"],
+        "price": booking_data["price"],
+        "currency": booking_data["currency"],
         "status": "CONFIRMED",
         "confirmation_number": "HTL-" + str(uuid.uuid4())[:8],
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
     }
-
-    result = hotels_collection.insert_one(booking_doc)
+    result = hotel_bookings_collection.insert_one(booking_doc)
     booking_doc["_id"] = str(result.inserted_id)
     return booking_doc
 
@@ -67,7 +81,7 @@ def get_bookings_by_user_id(user_id: str) -> list:
     Retrieve all hotel bookings associated with a given user_id.
     """
     bookings = []
-    cursor = hotels_collection.find({"user_id": user_id})
+    cursor = hotel_bookings_collection.find({"user_id": user_id})
     for doc in cursor:
         doc["_id"] = str(doc["_id"])
         doc["created_at"] = str(doc.get("created_at"))
@@ -75,18 +89,40 @@ def get_bookings_by_user_id(user_id: str) -> list:
         bookings.append(doc)
     return bookings
 
+
+def upsert_hotels(hotels: list):
+    """Upsert each hotel by hotel_id into the hotels collection."""
+    ops = []
+    for h in hotels:
+        if not h.get("hotel_id"):
+            continue
+        ops.append(
+            UpdateOne(
+                {"hotel_id": h["hotel_id"]},
+                {
+                    "$set": h,
+                    "$setOnInsert": {
+                        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                    },
+                },
+                upsert=True,
+            )
+        )
+    if ops:
+        hotels_collection.bulk_write(ops)
+
 #############################################################
 #
 #                       DB OPERATIONS 
 #
 #############################################################
 def create_booking_record(booking_doc: dict):
-    result = hotels_collection.insert_one(booking_doc)
+    result = hotel_bookings_collection.insert_one(booking_doc)
     return str(result.inserted_id)
 
 def list_bookings_by_user(user_id: str):
     bookings = []
-    cursor = hotels_collection.find({"user_id": user_id})
+    cursor = hotel_bookings_collection.find({"user_id": user_id})
     for doc in cursor:
         doc["_id"] = str(doc["_id"])
         bookings.append(doc)

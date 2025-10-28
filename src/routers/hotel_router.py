@@ -3,14 +3,15 @@ import logging
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Body, Path
 from src.services.nlp_service import extract_hotel_search_params
-from config.databse import hotels_collection
-from src.models.hotel_model import HotelBookingInput
+from config.databse import hotel_bookings_collection
+from src.models.hotel_model import BookingCreate
 from src.services.hotel_service import (
     search_hotels, 
     create_booking_record, 
     get_user_by_id, 
     create_booking_for_user,
-    get_bookings_by_user_id)
+    get_bookings_by_user_id,
+    upsert_hotels)
 
 
 router = APIRouter()
@@ -32,6 +33,7 @@ def hotel_search_with_nlp(
 
         # 2. Call hotel API with structured data
         response = search_hotels(**extracted)
+
         return {"query": extracted, "results": response}
         # return {"input": user_input, "result": extracted}
 
@@ -39,21 +41,19 @@ def hotel_search_with_nlp(
         raise HTTPException(status_code=500, detail=str(e))
     
 
-@router.post("/hotels/bookings/{user_id}", tags=["hotels"])
+@router.post("/hotels/{hotel_id}/bookings/{user_id}", tags=["hotels"])
 def create_user_booking(
+    hotel_id: str = Path(..., description="Hotel place_id / hotel_id"),
     user_id: str = Path(..., description="MongoDB ObjectId of the user"),
-    booking_data: HotelBookingInput = Body(
+    booking_data: BookingCreate = Body(
         ...,
         example={
-            "hotel_name": "DoubleTree by Hilton",
-            "city": "Montréal",
-            "address": "1255 Rue Jeanne-Mance, Montréal, QC H5B 1E5•(514) 285-1450",
             "check_in": "2025-11-15",
             "check_out": "2025-11-20",
             "price": 300.00,
             "currency": "CAD"
         },
-        description="Provide all required hotel booking details."
+        description="Minimal booking details; hotel is provided in the path."
     )
 ):
     try:
@@ -61,14 +61,14 @@ def create_user_booking(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        new_booking = create_booking_for_user(user, booking_data.dict())
+        # (Optional) ensure hotel exists locally; you can add a quick lookup if you want
+        new_booking = create_booking_for_user(user, hotel_id, booking_data.dict())
 
         return {
             "status": "success",
             "message": "Booking created successfully",
             "booking": new_booking
         }
-
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -102,38 +102,30 @@ def get_user_bookings(user_id: str = Path(..., description="MongoDB ObjectId of 
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/hotels/bookings/{user_id}/{booking_id}", tags=["hotels"])
+@router.delete("/hotels/{hotel_id}/bookings/{user_id}", tags=["hotels"])
 def delete_booking(
-    user_id: str = Path(..., description="MongoDB ObjectId of the user"),
-    booking_id: str = Path(..., description="MongoDB ObjectId of the booking")
+    hotel_id: str = Path(..., description="Hotel ID (place_id)"),
+    user_id: str = Path(..., description="MongoDB ObjectId of the user")
 ):
     """
-    Delete a hotel booking for a specific user by booking_id.
+    Delete all bookings by a user for a specific hotel_id.
     """
-    # Validate ObjectIds
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=400, detail="Invalid user_id")
-    if not ObjectId.is_valid(booking_id):
-        raise HTTPException(status_code=400, detail="Invalid booking_id")
 
-    # Check if user exists
     user = get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Attempt to delete the booking
-    result = hotels_collection.delete_one({
-        "_id": ObjectId(booking_id),
+    result = hotel_bookings_collection.delete_many({
+        "hotel_id": hotel_id,
         "user_id": user_id
     })
 
     if result.deleted_count == 0:
-        raise HTTPException(
-            status_code=404,
-            detail="Booking not found or does not belong to this user"
-        )
+        raise HTTPException(status_code=404, detail="No bookings found for this hotel and user")
 
     return {
         "status": "success",
-        "message": f"Booking {booking_id} deleted successfully for user {user_id}"
+        "message": f"Deleted {result.deleted_count} booking(s) for hotel {hotel_id} and user {user_id}"
     }
