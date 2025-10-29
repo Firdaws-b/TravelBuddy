@@ -7,5 +7,8 @@ class Settings:
     MONGO_URI = os.getenv("MONGO_URI")
     BASE_ROUTE: str = "/api/v1"
     HF_TOKEN: str = os.getenv("HF_TOKEN", "")
+    RAPIDAPI_HOST = os.getenv("RAPIDAPI_HOST")
+    RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 settings = Settings()
