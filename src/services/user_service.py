@@ -20,7 +20,9 @@ def create_user(email, password, first_name, last_name):
         "password": hash_password(password),
         "first_name": first_name,
         "last_name": last_name,
-        "role": "user"})
+        "role": "user",
+        "preferences": {"interests": [],"budget": None}
+        })
     return {"msg": "User created successfully"}
 
 def get_user(email):

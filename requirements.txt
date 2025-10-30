@@ -4,6 +4,9 @@ dotenv~=0.9.9
 python-dotenv~=1.1.1
 fastapi~=0.118.0
 pydantic-settings>=2.11.0
+huggingface-hub>=0.25.2 
+numpy>=1.26.4
+dnspython
 pydantic~=2.11.9
 passlib
 jwt
