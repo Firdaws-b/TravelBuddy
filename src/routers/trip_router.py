@@ -1,7 +1,9 @@
-# TODO Implement trip_router
 from fastapi import APIRouter, Depends
 from src.models.trip_model import PlannedTripModel, PlanATrip, TripSummaryModel, UpdateTripModel, ItineraryDayModel
+from src.models.user_model import UserFeedback
 from src.services.trip_service import plan_trip_service, get_trips_service, get_planned_trip_service, update_trip_service, cancel_trip_service, regenerate_itinerary_service, get_itinerary_service
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -39,11 +41,11 @@ def get_itinerary(trip_id: str):
 
 
 @router.post("/{trip_id}/itinerary", response_model=list[ItineraryDayModel])
-async def regenerate_itinerary(trip_id: str):
-    return await regenerate_itinerary_service(trip_id)
+async def regenerate_itinerary(trip_id: str, user_feedback: UserFeedback):
+    return await regenerate_itinerary_service(trip_id, user_feedback.user_feedback)
 
 
-
+# TODO EXPORT THE GENERATED TRIP INTO A PDF FILE WITH ALL TRIP DETAILS
 
 
 

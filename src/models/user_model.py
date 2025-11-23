@@ -10,10 +10,6 @@ class CreateUser(BaseModel):
     password: str
     first_name: str
     last_name: str
-    created_at: datetime
-    updated_at: datetime
-    password_hash: str
-    planned_trips: Optional[List[PlannedTripModel]] = None
 
 
 class UserProfile(BaseModel):
@@ -21,12 +17,13 @@ class UserProfile(BaseModel):
     first_name: str
     last_name: str
     budget_range: Optional[dict] = None
-    planned_trips: Optional[dict] = None
+    planned_trips: Optional[List[PlannedTripModel]] = None
     activity_preferences: List[dict] = None
     is_verified: bool
     created_at: datetime
     updated_at: datetime
     password_hash: str
+    role: str = "user"
 
 
 class UserLogin(BaseModel):
@@ -38,6 +35,8 @@ class UpdateUser(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     budget_range: Optional[dict] = None
-    planned_trips: Optional[PlannedTripModel] = None
     activity_preferences: Optional[dict] = None
 
+
+class UserFeedback(BaseModel):
+    user_feedback: str

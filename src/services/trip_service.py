@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from config.databse import trips_collection, client, users_collection
 from src.models.trip_model import PlannedTripModel, PlanATrip, ItineraryDayModel
-from src.services.ai_service import generate_itinerary
+from src.services.ai_service import generate_itinerary, regenerate_itinerary
 
 # Plan a trip
 async def plan_trip_service(destination, budget, duration,number_of_travelers, user_email_address, date):
@@ -117,13 +117,13 @@ def cancel_trip_service(trip_id):
 
 
 
-async def regenerate_itinerary_service(trip_id):
+async def regenerate_itinerary_service(trip_id, user_feedback):
     trip = trips_collection.find_one({"trip_id": trip_id})
     if not trip:
         raise HTTPException(status_code=404, detail=f"Trip with ID: {trip_id} does not exist")
 
     users_collection.find_one()
-    new_generated_itinerary = await generate_itinerary(trip["destination"], trip["duration"],trip["number_of_travelers"],2000)
+    new_generated_itinerary = await regenerate_itinerary(trip, user_feedback)
     trips_collection.update_one(
             {"trip_id": trip_id},
             {"$set": {"generated_itinerary": [day.model_dump() for day in new_generated_itinerary]}}

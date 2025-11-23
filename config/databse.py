@@ -8,7 +8,8 @@ users_collection = db["Users"]
 destinations_collection = db["Destinations"]
 trips_collection = db["Trips"]
 hotels_collection = db["hotels"]
-hotel_bookings_collection = db["hotel_bookings"] 
+hotel_bookings_collection = db["hotel_bookings"]
+admins_collection = db["Admins"]
 try:
     client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
