@@ -6,6 +6,7 @@ client = MongoClient(settings.MONGO_URI, tlsCAFile=certifi.where())
 db = client["TravelBuddy"]
 users_collection = db["Users"]
 destinations_collection = db["Destinations"]
+recommendations_collection = db["Recommendations"]
 trips_collection = db["Trips"]
 hotels_collection = db["hotels"]
 hotel_bookings_collection = db["hotel_bookings"] 
