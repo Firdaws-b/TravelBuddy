@@ -4,6 +4,8 @@ from config.settings import settings
 from fastapi import FastAPI
 from .routers import hotel_routes, flights_router, user_router, auth_router
 
+
+
 app = FastAPI(title="TravelBuddy API", version="1.0.0")
 
 
