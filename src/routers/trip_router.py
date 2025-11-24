@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from src.models.trip_model import PlannedTripModel, PlanATrip, TripSummaryModel, UpdateTripModel, ItineraryDayModel
 from src.models.user_model import UserFeedback, UserProfile
 from src.services.trip_service import plan_trip_service, get_trips_service, get_planned_trip_service, update_trip_service, cancel_trip_service, regenerate_itinerary_service, get_itinerary_service

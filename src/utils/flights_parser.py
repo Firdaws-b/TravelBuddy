@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from sympy.physics.units import temperature
 from openai import OpenAI
 
-from src.models import FlightsListSearchRequest, FlightInfoRequest
+from src.models.flights_model import FlightsListSearchRequest, FlightInfoRequest
 
 load_dotenv()
 open_ai_key = os.getenv("OPENAI_CLIENT_ID")

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import date, datetime
 
-from src.models import UserProfile
+from src.models.user_model import UserProfile
 
 
 

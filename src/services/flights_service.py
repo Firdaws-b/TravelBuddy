@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from fastapi import Depends
 
 from config.databse import flights_collection, users_collection
-from src.models import BookFlightResponse, Itinerary
+from src.models.flights_model import BookFlightResponse, Itinerary
 
 from src.models.flights_model import (
     FlightsListSearchRequest,
