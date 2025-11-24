@@ -6,7 +6,6 @@ WORKDIR /app
 
 # Copy only required files
 COPY requirements.txt .
-COPY .env .
 COPY README.md .
 COPY Dockerfile .
 COPY config ./config
