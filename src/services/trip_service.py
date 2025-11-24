@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from config.databse import trips_collection, client, users_collection
 from src.models.trip_model import PlannedTripModel, PlanATrip, ItineraryDayModel
-from src.services.ai_service import generate_itinerary
+from src.services.ai_service import generate_itinerary, regenerate_itinerary
 
 # Plan a trip
 async def plan_trip_service(destination, budget, duration,number_of_travelers, user_email_address, date):
@@ -26,7 +26,7 @@ async def plan_trip_service(destination, budget, duration,number_of_travelers, u
         number_of_travelers=number_of_travelers,
         generated_itinerary=  itinerary,
         overall_cost=budget,
-        cost_per_traveler=budget/duration,
+        cost_per_traveler=budget/number_of_travelers,
         planned_date_time=date
     )
     trip.generate_trip_id()
@@ -43,21 +43,21 @@ async def plan_trip_service(destination, budget, duration,number_of_travelers, u
     return trip
 
 # return a summary of planned trips
-def get_trips_service():
+def get_trips_service(user_email_address):
     # get all trips in the trips collection
-    trips = trips_collection.find({}, {"_id":0, "trip_id":1, "destination":1, "duration":1, "overall_cost":1})
+    trips = trips_collection.find({"user_email_address":user_email_address}, {"_id":0, "trip_id":1, "destination":1, "duration":1, "overall_cost":1})
     return trips
 
 # return all details of a planned trip
-def get_planned_trip_service(trip_id):
-    trip = trips_collection.find_one({"trip_id": trip_id})
+def get_planned_trip_service(trip_id, current_user_email_address):
+    trip = trips_collection.find_one({"trip_id": trip_id, "user_email_address": current_user_email_address})
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     return trip
 
 # update a planned trip
-async def update_trip_service(trip_id, duration, budget, number_of_travelers, planned_date_time):
-    trip = trips_collection.find_one({"trip_id": trip_id})
+async def update_trip_service(trip_id, duration, budget, number_of_travelers, planned_date_time, user_email_address):
+    trip = trips_collection.find_one({"trip_id": trip_id, "user_email_address": user_email_address})
     if not trip:
         raise HTTPException(status_code=404, detail=f"Trip with ID: {trip_id} does not exist")
     trips_collection.update_one(
@@ -82,7 +82,7 @@ async def update_trip_service(trip_id, duration, budget, number_of_travelers, pl
             number_of_travelers=number_of_travelers,
             generated_itinerary=itinerary,
             overall_cost=budget,
-            cost_per_traveler=budget / duration,
+            cost_per_traveler=budget / number_of_travelers,
             planned_date_time=planned_date_time
         )
 
@@ -100,8 +100,8 @@ async def update_trip_service(trip_id, duration, budget, number_of_travelers, pl
     return updated_trip
 
 
-def cancel_trip_service(trip_id):
-    trip = trips_collection.find_one({"trip_id": trip_id})
+def cancel_trip_service(trip_id, current_user_email_address):
+    trip = trips_collection.find_one({"trip_id": trip_id, "user_email_address": current_user_email_address})
     if not trip:
         # Trip not found: raise 404 exception
         raise HTTPException(status_code=404, detail=f"Trip with ID: {trip_id} was not found")
@@ -117,15 +117,15 @@ def cancel_trip_service(trip_id):
 
 
 
-async def regenerate_itinerary_service(trip_id):
-    trip = trips_collection.find_one({"trip_id": trip_id})
+async def regenerate_itinerary_service(trip_id, user_feedback, current_user_email_address):
+    trip = trips_collection.find_one({"trip_id": trip_id, "user_email_address": current_user_email_address})
     if not trip:
         raise HTTPException(status_code=404, detail=f"Trip with ID: {trip_id} does not exist")
 
     users_collection.find_one()
-    new_generated_itinerary = await generate_itinerary(trip["destination"], trip["duration"],trip["number_of_travelers"],2000)
+    new_generated_itinerary = await regenerate_itinerary(trip, user_feedback)
     trips_collection.update_one(
-            {"trip_id": trip_id},
+            {"trip_id": trip_id, "user_email_address": current_user_email_address},
             {"$set": {"generated_itinerary": [day.model_dump() for day in new_generated_itinerary]}}
         )
     users_collection.update_one(
@@ -134,12 +134,12 @@ async def regenerate_itinerary_service(trip_id):
                       }})
 
     return new_generated_itinerary
-        # Trip not found: raise HTTPException
 
 
-def get_itinerary_service(trip_id: str):
+
+def get_itinerary_service(trip_id: str, user_email_address: str):
     trip = trips_collection.find_one(
-        {"trip_id": trip_id},
+        {"trip_id": trip_id, "user_email_address": user_email_address},
         {"_id": 0, "generated_itinerary": 1}
     )
 

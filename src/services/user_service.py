@@ -47,10 +47,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
         db = client["TravelBuddy"]
         user_collection = db["Users"]
-        print("user collection is ********: ", user_collection)
         user = user_collection.find_one({"email": email})
-        print("email is ", email)
-        print("user: ", user)
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
         user['_id'] = str(user['_id'])
