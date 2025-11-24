@@ -9,13 +9,14 @@ from dotenv import load_dotenv
 from fastapi import Depends
 
 from config.databse import flights_collection, users_collection
-from src.models import BookFlightResponse, Itinerary
+from src.models.flights_model import BookFlightResponse, Itinerary
 
 from src.models.flights_model import (
     FlightsListSearchRequest,
     FlightsListSearchResponse,
     FlightInfoResponse,
-    FlightInfoRequest, Price, Flight, DeleteFlightResponse, UserBookedFlightsResponse,
+    FlightInfoRequest, Price, Flight, DeleteFlightResponse, UserBookedFlightsResponse, BookFlightRequest,
+    DeleteFlightRequest,
 )
 from amadeus import Client, ResponseError
 
@@ -35,11 +36,9 @@ class FlightsService:
             client_id=amadeus_client_id,
             client_secret=amadeus_client_secret,
         )
-        self.parser = FlightQueryParser()
 
-    async def search_flights_list(self, query: str) -> list[FlightsListSearchResponse]:
-        # Define parameters for the API request
-        flight_request: FlightsListSearchRequest = self.parser.parse_query_flights_list(query)
+    async def search_flights_list(self, flight_request: FlightsListSearchRequest) -> list[FlightsListSearchResponse]:
+
 
         # Make the API request to Amadeus
         print("Sending request to Amadeus API with parameters:")
@@ -50,18 +49,19 @@ class FlightsService:
             "adults": flight_request.adults,
             "children": flight_request.children,
             "infants": flight_request.infants,
-            "travelClass": flight_request.cabin_class,
+            "travelClass": flight_request.cabin_class.upper(),
             "currencyCode": flight_request.currency,
             "includedAirlineCodes" : flight_request.airline,
         })
+
         params = {
             "originLocationCode": flight_request.departure_airport,
             "destinationLocationCode": flight_request.arrival_airport,
-            "departureDate": str(flight_request.departure_date),
+            "departureDate": flight_request.departure_date,
             "adults": flight_request.adults,
             "children": flight_request.children,
             "infants": flight_request.infants,
-            "travelClass": flight_request.cabin_class,
+            "travelClass": flight_request.cabin_class.upper(),
             "currencyCode": flight_request.currency,
             "max": 5
 
@@ -101,16 +101,15 @@ class FlightsService:
                     arrival_airport=segment_info[-1]["arrival_airport"],
                     departure_time=segment_info[0]["departure_time"],
                     arrival_time=segment_info[-1]["arrival_time"],
+                    departure_date=flight_request.departure_date,
                     duration=total_duration,
                     price=item["price"]["total"],
-                    cabin_class=flight_request.cabin_class,
+                    cabin_class=flight_request.cabin_class.upper(),
                 )
                 flights.append(flight)
         return flights
 
-    async def search_flight_info(self, query: str) -> Union[FlightInfoResponse, dict]:
-        # Define parameters used as inputs for our search query
-        flight_info_request: FlightInfoRequest = self.parser.parse_query_flight_info(query)
+    async def search_flight_info(self, flight_info_request: FlightInfoRequest) -> Union[FlightInfoResponse, dict]:
 
         # Make the API call to Amadeus
         print("Sending request to Amadeus API with parameters:")
@@ -152,10 +151,9 @@ class FlightsService:
         )
         return flight
     # Save flight search list in the databse
-    async def save_flights_list(self,search_query:str, flights: List[dict], user_id: str):
+    async def save_flights_list(self, flights: List[dict], user_id: str):
         document = {
-            "user_id": get_current_user(user_id).id,
-            "query": search_query,
+            "user_id": user_id,
             "flights": [f.dict() for f in flights],
             "searched_at": datetime.now(),
         }
@@ -163,14 +161,23 @@ class FlightsService:
         return str(result.inserted_id)
 
     # Book a flight based on a user's query
-    async def book_flight(self, search_query:str, user_email: str):
+    async def book_flight(self, flight_input: BookFlightRequest):
         # make sure that the user exists
-        user = users_collection.find_one({"email": user_email})
+        user = users_collection.find_one({"email": flight_input.user_email})
         if not user:
             raise ValueError("User not found")
-
+        search_input = FlightsListSearchRequest(
+            departure_airport= flight_input.departure_airport,
+            arrival_airport= flight_input.arrival_airport,
+            departure_date= flight_input.departure_date,
+            cabin_class= flight_input.cabin_class,
+            currency= flight_input.currency,
+            adults= flight_input.adults,
+            children= flight_input.children,
+            infants= flight_input.infants,
+        )
         # search for flights using the function search flight lists
-        flights_list = await self.search_flights_list(search_query)
+        flights_list = await self.search_flights_list(search_input)
         # handle the case where no flights were found in the flights list with the user's preferences
         if not flights_list:
             return BookFlightResponse(
@@ -179,18 +186,8 @@ class FlightsService:
                 itineraries=[],
                 price=Price(total="0", currency="CAD", grand_total= "0.0")
             )
-        # check the query, if the user has specified a flight number
-        flight_info = self.parser.parse_query_flight_info(search_query)
-        selected_flight = None
-        if flight_info.flight_number:
-            # loop through the list and find the flight with the specific number
-            for flight in flights_list:
-                if flight_info.flight_number == flight.flight_number:
-                    selected_flight = flight
-                    break
-        # if no flight has been selected, select the first one in the list
-        if not selected_flight:
-            selected_flight = flights_list[0]
+        selected_flight = next((f for f in flights_list if f.flight_number == flight_input.flight_number),
+                               flights_list[0])
 
         print("This is the selected flight", selected_flight)
         # Book the flight, i.e add the flight to the flights colletion in the database
@@ -217,7 +214,7 @@ class FlightsService:
         print("Flight booked successfully with booking ID:", booking_id)
         # Insert the flight booking into the user's booked flights list
         users_collection.update_one({
-            "email": user_email,
+            "email": flight_input.user_email,
         }, {
             "$push": { "booked_flights": booking_doc}},
         )
@@ -246,9 +243,9 @@ class FlightsService:
         return booking_response
 
     # Delete a booked flight
-    async def cancel_flight(self, query:str, current_user:dict) -> DeleteFlightResponse:
+    async def cancel_flight(self, cancel_input: DeleteFlightRequest, current_user:dict) -> DeleteFlightResponse:
         # Find the booking in the database
-        booking_id = self.parser.parse_query_booking_id(query)
+        booking_id = cancel_input.booking_id
 
         if not booking_id:
             return DeleteFlightResponse(
