@@ -105,3 +105,8 @@ class DeleteFlightResponse(BaseModel):
     booking_id : str
     booking_status : str = "Cancelled"
     refund_amount : Optional[Price] = None
+
+class UserBookedFlightsResponse(BaseModel):
+    booked_flights: List[BookFlightResponse]
+
+

@@ -15,7 +15,7 @@ from src.models.flights_model import (
     FlightsListSearchRequest,
     FlightsListSearchResponse,
     FlightInfoResponse,
-    FlightInfoRequest, Price, Flight, DeleteFlightResponse,
+    FlightInfoRequest, Price, Flight, DeleteFlightResponse, UserBookedFlightsResponse,
 )
 from amadeus import Client, ResponseError
 
@@ -246,9 +246,10 @@ class FlightsService:
         return booking_response
 
     # Delete a booked flight
-    async def cancel_flight(self, query:str, user_email:str) -> DeleteFlightResponse:
+    async def cancel_flight(self, query:str, current_user:dict) -> DeleteFlightResponse:
         # Find the booking in the database
         booking_id = self.parser.parse_query_booking_id(query)
+
         if not booking_id:
             return DeleteFlightResponse(
                 booking_id="",
@@ -258,8 +259,11 @@ class FlightsService:
         # Delete the booking
         db_query = {"_id": booking_id}
         booking = flights_collection.find_one(db_query)
+        user = users_collection.find_one({
+            "email": current_user['email'],
+            "booked_flights._id": booking_id})
         # Make sure that the booking belongs to the user
-        if booking["user_email"] != user_email:
+        if not user:
             raise ValueError("You are not authorized to cancel this booking")
         flights_collection.update_one(
             {"_id": booking_id},
@@ -267,7 +271,7 @@ class FlightsService:
         )
         # Also remove the booking from the user's booked flights list
         result = users_collection.update_one({
-            "email": user_email,
+            "email": current_user['email'],
             "booked_flights._id": booking_id,
         }, {
             "$set": {"booked_flights.$.booking_status": "Cancelled"}
@@ -275,7 +279,7 @@ class FlightsService:
         )
 
         print("Matched:", result.matched_count, "Modified:", result.modified_count)
-        print(users_collection.find_one({"email": user_email})["booked_flights"])
+        print(users_collection.find_one({"email": current_user['email']})["booked_flights"])
 
         # Prepare the response
         refund_price = Price(
@@ -288,3 +292,45 @@ class FlightsService:
             booking_status="Cancelled",
             refund_amount=refund_price,
         )
+
+    # Get all booked flights of a user, with booking_status = 'Confirmed'
+    async def get_user_booked_flights(self, current_user: dict) -> UserBookedFlightsResponse:
+        user = users_collection.find_one({"email": current_user['email']})
+        if not user or "booked_flights" not in user:
+            return UserBookedFlightsResponse(booked_flights=[])
+        # Only return flights with booking_status = 'Confirmed'
+        confirmed_flights = [
+            flight for flight in user["booked_flights"]
+            if flight["booking_status"] == "Confirmed"
+        ]
+
+        booked_flights = []
+        for flight in confirmed_flights:
+            itineraries = []
+            flight_info = Flight(
+                flight_number=flight["flight"],
+                departure_airport=flight["departure_airport"],
+                arrival_airport=flight["arrival_airport"],
+                departure_time=flight["departure_time"],
+                arrival_time=flight["arrival_time"],
+                duration=flight["duration"],
+                carrier_code=flight["carrier_code"],
+            )
+            itinerary = Itinerary(segments=[flight_info])
+            itineraries.append(itinerary)
+
+            price = Price(
+                total=flight["price"]["total"],
+                currency=flight["price"]["currency"],
+                grand_total=flight["price"]["grand_total"],
+            )
+
+            booked_flight = BookFlightResponse(
+                booking_id=flight["_id"],
+                booking_status=flight["booking_status"],
+                itineraries=itineraries,
+                price=price,
+            )
+            booked_flights.append(booked_flight)
+        return UserBookedFlightsResponse(booked_flights=booked_flights)
+
