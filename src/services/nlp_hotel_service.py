@@ -4,111 +4,158 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from datetime import datetime, timedelta
 from dateparser import parse as parse_date
+from fastapi import HTTPException
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
 def extract_hotel_search_params(user_input: str):
     """
-    Extracts hotel search parameters using OpenAI + dateparser.
+    Extracts structured hotel search parameters using GPT,
+    then validates and corrects dates to ensure they are always
+    valid future ISO dates for the external hotel search API.
     """
+
+    # -----------------------------
+    # Prompt for GPT
+    # -----------------------------
     prompt = f"""
-    Transform the user request into a JSON that I can use to compute exact hotel search parameters.
+    You are a deterministic hotel-search extractor.
 
-    You may use the following time references when interpreting the user's dates:
-    - TODAY: today's date ({datetime.today().date().isoformat()})
-    - TOMORROW: tomorrow's date
-    - NEXT_WEEK: 7 days after today
-    - END_OF_MONTH: last day of the current month
-    - MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY: days of the upcoming week
-    - CHECKIN: explicitly provided check-in date (if any)
-    - CHECKOUT: explicitly provided check-out date (if any)
+    STRICT OUTPUT RULES:
+    - Return ONLY valid JSON, no explanation or text.
+    - All dates MUST be ISO format YYYY-MM-DD if you can determine them.
+    - If a date cannot be determined, output null.
+    - Required keys: q, check_in_date, check_out_date, adults, children, currency, gl, hl.
+    - currency="CAD", gl="us", hl="en".
 
-    If the user sentence mentions a stay duration or window, return:
-        {{"start": check-in, "end": check-out}}
+    EXAMPLES:
+    Input: "Find hotels in Paris from March 10 to March 15 for 2 adults"
+    Output: {{"q":"Paris","check_in_date":"2025-03-10","check_out_date":"2025-03-15","adults":2,"children":0,"currency":"CAD","gl":"us","hl":"en"}}
 
-    If the sentence mentions only specific dates, return:
-        {{"list": [dates]}}
+    Input: "Hotels in Tokyo from July 4 to July 8 for 1 adult and 1 child"
+    Output: {{"q":"Tokyo","check_in_date":"2025-07-04","check_out_date":"2025-07-08","adults":1,"children":1,"currency":"CAD","gl":"us","hl":"en"}}
 
-    All dates MUST use the format YYYY-MM-DD.
-
-    If you cannot compute the exact date, express it using the simplest arithmetic formula based on the above references.
-    Use a unit of one day. Consider a week = 7 days.
-
-    If no valid city or dates are detected, return:
-        {{"error": true}}
-
-    Today's date: {datetime.today().date().isoformat()}.
-
-    Now extract the hotel search parameters strictly following this structure:
-
-    {{
-        "q": "city name",
-        "check_in_date": "YYYY-MM-DD or relative reference",
-        "check_out_date": "YYYY-MM-DD or relative reference",
-        "adults": number (default 2),
-        "children": number (default 0),
-        "currency": "CAD",
-        "gl": "us",
-        "hl": "en"
-    }}
-
-    Input sentence:
-    \"""{user_input}\"""
+    YOUR TURN.
+    Input: "{user_input}"
     """
 
-
+    # -----------------------------
+    # 1. GPT CALL
+    # -----------------------------
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You extract structured hotel search data and return only JSON."},
+            {"role": "system", "content": "Return ONLY JSON. No explanation."},
             {"role": "user", "content": prompt}
         ]
     )
 
     raw_output = response.choices[0].message.content.strip()
 
+    # -----------------------------
+    # 2. Parse JSON
+    # -----------------------------
     try:
         data = json.loads(raw_output)
     except json.JSONDecodeError:
-        data = {}
+        raise ValueError(f"GPT returned invalid JSON:\n{raw_output}")
 
-    # --- Current date to verify is user inputted a past date ---
-    today = datetime.today().date()
+    # -----------------------------
+    # 3. Strict key validation
+    # -----------------------------
+    required_keys = [
+        "q", "check_in_date", "check_out_date",
+        "adults", "children", "currency", "gl", "hl"
+    ]
+    for key in required_keys:
+        if key not in data:
+            raise ValueError(f"Missing key: {key}\nOutput: {raw_output}")
 
-    def normalize_date(date_value, fallback):
-        """Converts various formats or relative phrases into YYYY-MM-DD."""
-        if not date_value:
-            return fallback
-        # Try to parse absolute or relative date
-        parsed = parse_date(str(date_value), settings={"RELATIVE_BASE": datetime.now()})
+    # -----------------------------
+    # 4. Strict ISO parser
+    # -----------------------------
+    def rigid_parse(date_string):
+        if date_string is None:
+            return None
+        if isinstance(date_string, str) and len(date_string) == 10:
+            try:
+                return datetime.strptime(date_string, "%Y-%m-%d").date()
+            except:
+                return None
+        return None
+
+    check_in = rigid_parse(data["check_in_date"])
+    check_out = rigid_parse(data["check_out_date"])
+
+    # -----------------------------
+    # 5. Fallback using dateparser
+    # -----------------------------
+    if not check_in and data["check_in_date"]:
+        parsed = parse_date(data["check_in_date"])
         if parsed:
-            parsed_date = parsed.date()
-            # avoid past dates
-            if parsed_date < today:
-                parsed_date = today
-            return parsed_date
-        return fallback
-    
-    check_in = normalize_date(data.get("check_in_date"), None)
-    check_out = normalize_date(data.get("check_out_date"), None)
+            check_in = parsed.date()
 
-    # if check_out == None:
-    #     check_out = check_in + timedelta(days=1)
+    if not check_out and data["check_out_date"]:
+        parsed = parse_date(data["check_out_date"])
+        if parsed:
+            check_out = parsed.date()
 
-    # Ensure checkout is after checkin if checkout date not mentioned
-    if check_out <= check_in:
+    # -----------------------------
+    # 6. If both dates missing → reject input
+    # -----------------------------
+    if not check_in and not check_out:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid dates found in user input."
+        )
+
+    # -----------------------------
+    # 7. If only one date given → infer the other
+    # -----------------------------
+    if check_in and not check_out:
         check_out = check_in + timedelta(days=1)
 
-    # Write back normalized ISO strings
+    if check_out and not check_in:
+        check_in = check_out - timedelta(days=1)
+
+    # -----------------------------
+    # 8. Future-date enforcement logic
+    # -----------------------------
+    today = datetime.now().date()
+
+    def ensure_future(date_obj):
+        """
+        If the extracted date is in the past, roll it into the future.
+        Example:
+        Today = 2025-11-24
+        "Dec 31" → 2025-12-31
+        "Jan 2" → 2026-01-02
+        """
+        # if parsed date has no year or is incorrect, dateparser may give past years
+        if date_obj < today:
+            # first try setting the year to the current one
+            updated = date_obj.replace(year=today.year)
+            if updated < today:
+                # otherwise bump to next year
+                updated = date_obj.replace(year=today.year + 1)
+            return updated
+        return date_obj
+
+    check_in = ensure_future(check_in)
+    check_out = ensure_future(check_out)
+
+    # -----------------------------
+    # 9. Guarantee valid range
+    # -----------------------------
+    if check_out < check_in:
+        check_out = check_in + timedelta(days=1)
+
+    # -----------------------------
+    # 10. Save cleaned values
+    # -----------------------------
     data["check_in_date"] = check_in.isoformat()
     data["check_out_date"] = check_out.isoformat()
-
-    # Other safe defaults
-    data["adults"] = data.get("adults")
-    data["children"] = data.get("children")
-    data["currency"] = data.get("currency", "CAD")
-    data["gl"] = data.get("gl", "us")
-    data["hl"] = data.get("hl", "en")
 
     return data
