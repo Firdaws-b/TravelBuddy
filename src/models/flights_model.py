@@ -4,8 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import date, datetime
 
-from src.models import UserProfile
-
+from src.models.user_model import UserProfile
 
 
 # Declare Base Models
@@ -48,6 +47,7 @@ class FlightsListSearchResponse(BaseModel):
     arrival_airport: str    # ISO 8601 format
     departure_time: str
     arrival_time: str
+    departure_date: str
     duration: str
     price: str
 
@@ -88,6 +88,10 @@ class BookFlightRequest(BaseModel):
     cabin_class: str
     traveler_type: str
     currency: str
+    adults: int
+    children: int
+    infants: int
+
 
 # Response model for Book a flight
 class BookFlightResponse(BaseModel):
