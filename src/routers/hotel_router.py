@@ -22,7 +22,7 @@ def hotel_search_with_nlp(
     user_input: str = Body(
         ...,
         embed=True,
-        example="Find hotels in Montreal from November 15 to November 20 for 2 adults"
+        example="Find hotels in Toronto from Dec 31 to Jan 2 for 2 adults"
     ),
     current_user: dict = Depends(get_current_user)
 ):
@@ -33,10 +33,10 @@ def hotel_search_with_nlp(
             raise HTTPException(status_code=400, detail="Destination not found in user input")
 
         # 2. Call hotel API with structured data
-        # response = search_hotels(**extracted)
+        response = search_hotels(**extracted)
 
-        # return {"query": extracted, "results": response}
-        return {"input": user_input, "result": extracted}
+        return {"query": extracted, "results": response}
+        # return {"input": user_input, "result": extracted}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -49,8 +49,8 @@ def create_user_booking(
         ...,
         example={
             "hotel_id": "ChIJAfBnl0EayUwRqA8gLblTR_4",
-            "check_in": "2025-11-15",
-            "check_out": "2025-11-20",
+            "check_in": "2025-11-26",
+            "check_out": "2025-11-28",
             "adults": 2,
             "children": 0
         },
