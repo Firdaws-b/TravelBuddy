@@ -22,7 +22,6 @@ from amadeus import Client, ResponseError
 
 from src.services.user_service import get_current_user
 # from src.services import get_current_user
-from src.utils import flights_parser
 from src.utils.flights_parser import FlightQueryParser
 
 load_dotenv()
@@ -36,10 +35,12 @@ class FlightsService:
             client_id=amadeus_client_id,
             client_secret=amadeus_client_secret,
         )
+        self.parser = FlightQueryParser()
 
-    async def search_flights_list(self, flight_request: FlightsListSearchRequest) -> list[FlightsListSearchResponse]:
+    async def search_flights_list(self, flight_request_raw: FlightsListSearchRequest) -> list[FlightsListSearchResponse]:
 
-
+        flight_request = self.parser.normalize_flight_input(flight_request_raw.dict())
+        print(flight_request)
         # Make the API request to Amadeus
         print("Sending request to Amadeus API with parameters:")
         print({
@@ -110,6 +111,14 @@ class FlightsService:
         return flights
 
     async def search_flight_info(self, flight_info_request: FlightInfoRequest) -> Union[FlightInfoResponse, dict]:
+
+        # normalize the date
+        try:
+            date = datetime.strptime(flight_info_request.departure_date, "%Y-%m-%d")
+            flight_info_request.departure_date = date.strftime("%Y-%m-%d")
+        except ValueError:
+            return {"error": "Invalid date format. Please use YYYY-MM-DD."}
+
 
         # Make the API call to Amadeus
         print("Sending request to Amadeus API with parameters:")
