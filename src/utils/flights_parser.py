@@ -2,10 +2,8 @@ import os
 import re
 import json
 from typing import Dict
-
 from dotenv import load_dotenv
 from sympy.physics.units import temperature
-from word2number import w2n
 from openai import OpenAI
 
 from src.models import FlightsListSearchRequest, FlightInfoRequest
