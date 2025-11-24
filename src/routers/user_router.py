@@ -20,3 +20,8 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
 async def update_user(user_id,user_new_data: UpdateUser):
     updated_user = update_user_function(user_id, user_new_data)
     return updated_user
+
+# # return all trips assigned to a specific user
+# @router.get("/{user_id}/trips")
+# def get_all_trips(user_id: str):
+#     return get_all_trips_service(user_id)
