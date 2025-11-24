@@ -1,27 +1,18 @@
+import os
 import numpy as np
 from bson import ObjectId
 from datetime import datetime, timezone
-from huggingface_hub import InferenceClient
-from config.databse import db, users_collection, destinations_collection
+from openai import OpenAI
+
+from config.databse import db, users_collection, destinations_collection, recommendations_collection
 from config.settings import settings
 
-
-#############################################################
-#
-#                       AI MODEL SETUP
-#
-#############################################################
-client = InferenceClient(
-    model="sentence-transformers/all-mpnet-base-v2",
-    token=settings.HF_TOKEN
-)
+# AI model setup (OpenAI embeddings)
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+EMBED_MODEL = "text-embedding-3-small"
 
 
-#############################################################
-#
-#                       CORE FUNCTIONS
-#
-#############################################################
+# Core functions
 def get_all_destinations(limit: int = 100) -> list:
     """
     Retrieve all destinations from the database.
@@ -35,12 +26,21 @@ def get_all_destinations(limit: int = 100) -> list:
     return data
 
 
-def _embed_text(text: str):
+def _embed_text(text: str, is_query: bool = False) -> np.ndarray:
     """
-    Convert text to vector embeddings using Hugging Face.
+    Convert text to vector embeddings using OpenAI.
+    Prefix text slightly differently for queries vs destination docs.
     """
-    arr = client.feature_extraction(text)
-    return np.mean(np.array(arr), axis=0)
+    if is_query:
+        text = "user request: " + text
+    else:
+        text = "destination description: " + text
+
+    response = openai_client.embeddings.create(
+        model=EMBED_MODEL,
+        input=text
+    )
+    return np.array(response.data[0].embedding)
 
 
 def _cosine(a, b):
@@ -64,21 +64,22 @@ def recommend_destinations(query: str, limit: int = 5, user_prefs: dict = None):
             prefs_text += f" budget {user_prefs['budget']}"
         query = query + prefs_text
 
-    query_vec = _embed_text(query)
+    query_vec = _embed_text(query, is_query=True)
     destinations = get_all_destinations(limit=100)
     scored = []
 
     for dest in destinations:
         text = f"{dest.get('name', '')} {dest.get('description', '')} {' '.join(dest.get('tags', []))}"
-        dest_vec = _embed_text(text)
+        dest_vec = _embed_text(text, is_query=False)
         score = _cosine(query_vec, dest_vec)
 
         # Budget-based adjustment (optional, light influence)
         avg_cost = dest.get("average_cost", 0)
         if user_prefs and "budget" in user_prefs and avg_cost:
             budget = float(user_prefs["budget"])
-            cost_penalty = abs(avg_cost - budget) / budget
-            score *= (1 - 0.3 * cost_penalty)
+            if budget > 0:
+                cost_penalty = abs(avg_cost - budget) / budget
+                score *= (1 - 0.3 * cost_penalty)
 
         scored.append((score, dest))
 
@@ -91,11 +92,7 @@ def recommend_destinations(query: str, limit: int = 5, user_prefs: dict = None):
     return result
 
 
-#############################################################
-#
-#                       DB OPERATIONS
-#
-#############################################################
+# DB operations and recommendation history
 def get_user_by_id(user_id: str) -> dict:
     """
     Load a user document by ObjectId string.
@@ -135,3 +132,70 @@ def upsert_destinations(destinations: list):
         )
     if ops:
         destinations_collection.bulk_write(ops)
+
+
+def create_recommendation(user_id: str, query: str, limit: int = 5):
+    user = get_user_by_id(user_id)
+    user_prefs = user.get("preferences", {}) if user else {}
+
+    results = recommend_destinations(query, limit, user_prefs)
+
+    doc = {
+        "user_id": user_id,
+        "original_query": query,
+        "results": results,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    inserted = recommendations_collection.insert_one(doc)
+    doc["_id"] = str(inserted.inserted_id)
+    return doc
+
+
+def get_past_recommendations(user_id: str):
+    cursor = recommendations_collection.find({"user_id": user_id}).sort("created_at", -1)
+    recs = []
+    for rec in cursor:
+        rec["_id"] = str(rec["_id"])
+        recs.append(rec)
+    return recs
+
+
+def regenerate_recommendation(rec_id: str, new_query: str, limit: int = 5):
+    if not ObjectId.is_valid(rec_id):
+        raise ValueError("Invalid recommendation ID")
+
+    rec = recommendations_collection.find_one({"_id": ObjectId(rec_id)})
+    if not rec:
+        raise ValueError("Recommendation not found")
+
+    user_id = rec["user_id"]
+    user = get_user_by_id(user_id)
+    user_prefs = user.get("preferences", {}) if user else {}
+
+    # Generate new results based on edited query
+    results = recommend_destinations(new_query, limit, user_prefs)
+
+    recommendations_collection.update_one(
+        {"_id": ObjectId(rec_id)},
+        {
+            "$set": {
+                "original_query": new_query,
+                "results": results,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        },
+    )
+
+    updated = recommendations_collection.find_one({"_id": ObjectId(rec_id)})
+    updated["_id"] = str(updated["_id"])
+    return updated
+
+
+def delete_recommendation(rec_id: str):
+    if not ObjectId.is_valid(rec_id):
+        raise ValueError("Invalid recommendation ID")
+
+    result = recommendations_collection.delete_one({"_id": ObjectId(rec_id)})
+    return result.deleted_count == 1
