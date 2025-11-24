@@ -9,7 +9,7 @@ numpy>=1.26.4
 dnspython
 pydantic~=2.11.9
 passlib
-jwt
+PyJWT
 transformers
 TensorFlow~=2.20.0
 tf-keras~=2.20.1
