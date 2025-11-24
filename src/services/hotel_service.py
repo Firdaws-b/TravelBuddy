@@ -63,12 +63,12 @@ def create_booking_for_user(user: dict, booking_data: dict) -> dict:
         "hotel_id": booking_data["hotel_id"],                                
         "check_in": booking_data["check_in"],
         "check_out": booking_data["check_out"],
-        "price": booking_data["price"],
-        "currency": booking_data["currency"],
+        "adults": booking_data["adults"],
+        "children": booking_data.get("children", 0),
         "status": "CONFIRMED",
         "confirmation_number": "HTL-" + str(uuid.uuid4())[:8],
-        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
     result = hotel_bookings_collection.insert_one(booking_doc)
     booking_doc["_id"] = str(result.inserted_id)
@@ -109,14 +109,38 @@ def upsert_hotels(hotels: list):
     if ops:
         hotels_collection.bulk_write(ops)
 
+def update_booking_for_user(user_id: str, confirmation_number: str, update_data: dict):
+    if not user_id or not confirmation_number:
+        raise ValueError("User ID and confirmation number required")
+    
+    allowed_fields = {"check_in", "check_out", "adults", "children"}
+    update_data = {k: v for k, v in update_data.items() if k in allowed_fields and v is not None}
+
+    if not update_data:
+        raise ValueError("No valid fields to update")
+    
+    update_data["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    result = hotel_bookings_collection.update_one(
+        {"user_id": user_id, "confirmation_number": confirmation_number},
+        {"$set": update_data}
+    )
+
+    if result.matched_count == 0:
+        raise ValueError("Booking not found with given confirmation number")
+    
+    updated_booking = hotel_bookings_collection.find_one(
+        {"user_id": user_id, "confirmation_number": confirmation_number}
+    )
+    updated_booking["_id"] = str(updated_booking["_id"])
+    return updated_booking
+
+
 #############################################################
 #
 #                       DB OPERATIONS 
 #
 #############################################################
-# def create_booking_record(booking_doc: dict):
-#     result = hotel_bookings_collection.insert_one(booking_doc)
-#     return str(result.inserted_id)
 
 def list_bookings_by_user(user_id: str):
     bookings = []

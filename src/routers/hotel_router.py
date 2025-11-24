@@ -2,14 +2,15 @@ import logging
 
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Body, Path
-from src.services.nlp_service import extract_hotel_search_params
+from src.services.nlp_hotel_service import extract_hotel_search_params
 from config.databse import hotel_bookings_collection
-from src.models.hotel_model import BookingCreate
+from src.models.hotel_model import BookingCreate, BookingUpdate
 from src.services.hotel_service import (
     search_hotels,  
     get_user_by_id, 
     create_booking_for_user,
-    get_bookings_by_user_id)
+    get_bookings_by_user_id,
+    update_booking_for_user)
 
 
 router = APIRouter()
@@ -48,10 +49,10 @@ def create_user_booking(
             "hotel_id": "ChIJAfBnl0EayUwRqA8gLblTR_4",
             "check_in": "2025-11-15",
             "check_out": "2025-11-20",
-            "price": 300.00,
-            "currency": "CAD"
+            "adults": 2,
+            "children": 0
         },
-        description="Minimal booking details; hotel is provided in the path."
+        description="Minimal booking details"
     )
 ):
     try:
@@ -100,30 +101,58 @@ def get_user_bookings(user_id: str = Path(..., description="MongoDB ObjectId of 
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/users/{user_id}/hotel-bookings/{hotel_id}", tags=["hotels"])
-def delete_booking(
-    hotel_id: str = Path(..., description="Hotel ID (place_id)"),
-    user_id: str = Path(..., description="MongoDB ObjectId of the user")
+@router.put("/users/{user_id}/hotel-bookings/confirmation/{confirmation_number}", tags=["hotels"])
+def update_booking(
+    user_id :  str = Path(..., description="MongoDB ObjectId of the user"),
+    confirmation_number: str = Path(..., description="Booking confirmation number"),
+    booking_update: BookingUpdate = Body(..., description="Fields to update")
 ):
-    """
-    Delete all bookings by a user for a specific hotel_id.
-    """
-    if not ObjectId.is_valid(user_id):
-        raise HTTPException(status_code=400, detail="Invalid user_id")
+    try:
+        user = get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="user not found")
+        updated_booking = update_booking_for_user(user_id, confirmation_number, booking_update.dict())
+        return {
+            "status": "success",
+            "message": "Booking updated successfully",
+            "updated_booking": updated_booking
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    user = get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
 
-    result = hotel_bookings_collection.delete_many({
-        "hotel_id": hotel_id,
-        "user_id": user_id
-    })
 
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="No bookings found for this hotel and user")
+@router.delete("/users/{user_id}/hotel-bookings/confirmation/{confirmation_number}", tags=["hotels"])
+def delete_booking_by_confirmation(
+    user_id: str = Path(..., description="MongoDB ObjectId of the user"),
+    confirmation_number: str = Path(..., description="Booking confirmation number")
+):
+    try:
+        # Validate user
+        user = get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
-    return {
-        "status": "success",
-        "message": f"Deleted {result.deleted_count} booking(s) for hotel {hotel_id} and user {user_id}"
-    }
+        # Delete booking by confirmation number
+        result = hotel_bookings_collection.delete_one({
+            "user_id": user_id,
+            "confirmation_number": confirmation_number
+        })
+
+        if result.deleted_count == 0:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No booking found for confirmation number {confirmation_number}"
+            )
+
+        return {
+            "status": "success",
+            "message": f"Booking with confirmation number {confirmation_number} deleted successfully"
+        }
+
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

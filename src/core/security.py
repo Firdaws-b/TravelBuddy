@@ -15,4 +15,3 @@ def create_token(data: dict):
 
 
 
-
