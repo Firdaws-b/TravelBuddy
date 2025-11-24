@@ -43,7 +43,6 @@ class PlanATrip(BaseModel):
     duration : float
     number_of_travelers: int
     date: datetime
-    user_email_address: str = Field(default_factory=str)
 
 
 class TripSummaryModel(BaseModel):
