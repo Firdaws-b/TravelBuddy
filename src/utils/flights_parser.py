@@ -10,7 +10,7 @@ from openai import OpenAI
 from src.models.flights_model import FlightsListSearchRequest, FlightInfoRequest
 
 load_dotenv()
-open_ai_key = os.getenv("OPENAI_CLIENT_ID")
+open_ai_key = os.getenv("OPENAI_API_KEY")
 
 class FlightQueryParser:
     def __init__(self):
