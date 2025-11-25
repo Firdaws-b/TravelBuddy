@@ -21,7 +21,7 @@ jobs:
           source: "."
           target: ${{ secrets.EC2_PATH }}
 
-      - name: Build Docker image on EC2
+      - name: Build Docker Container on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: "3.19.14.187"
