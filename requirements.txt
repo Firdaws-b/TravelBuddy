@@ -1,28 +1,33 @@
+# Lightweight ML stack
+tensorflow-cpu==2.20.0
+torch==2.9.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+
+# Core requirements
 certifi~=2025.10.5
 pymongo~=3.11.0
 dotenv~=0.9.9
 python-dotenv~=1.1.1
 fastapi~=0.118.0
 pydantic-settings>=2.11.0
-huggingface-hub>=0.25.2 
+huggingface-hub>=0.25.2
 numpy>=1.26.4
-dnspython
+dnspython==2.6.1
 pydantic~=2.11.9
 passlib
 PyJWT
-transformers
-TensorFlow~=2.20.0
-tf-keras~=2.20.1
+
+# Natural language + AI
+transformers     # lightweight, will work with CPU TF + CPU torch
 langchain~=0.3.20
 langchain-openai~=0.3.8
+
+# Misc backend packages
 argon2-cffi~=25.1.0
 openai>=1.60.0
-dnspython==2.6.1
 uvicorn[standard]==0.30.1
 dateparser==1.2.0
 httpx==0.27.0
 anyio>=4.0.0
 requests>=2.31.0
 amadeus~=12.0.0
-torch~=2.9.0
 sympy~=1.14.0

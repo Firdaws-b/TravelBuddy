@@ -12,73 +12,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      ###############################################################
-      # DEBUG: Show environment info
-      ###############################################################
-      - name: Debug — Show runner details
-        run: |
-          echo "=== GitHub Runner Info ==="
-          uname -a
-          echo "Current directory:"
-          pwd
-          echo "Directory contents:"
-          ls -la
-
-      ###############################################################
-      # DEBUG: Test EC2 connectivity
-      ###############################################################
-      - name: Debug — EC2 Host Check
-        run: |
-          echo "=== Testing connection to EC2 ==="
-          echo "Using host: 3.19.14.187"
-          ping -c 3 3.19.14.187 || true
-
-      ###############################################################
-      # COPY FILES TO EC2
-      ###############################################################
       - name: Copy files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: "3.19.14.187"        # <-- HARD-CODED FOR TESTING
+          host: "3.19.14.187"
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
           source: "."
-          target: "/home/ubuntu/app" # <-- TEMP TEST PATH
-          debug: true                # <-- enables verbose logs
+          target: ${{ secrets.EC2_PATH }}
 
-      ###############################################################
-      # BUILD DOCKER IMAGE + RUN APP ON EC2
-      ###############################################################
       - name: Build Docker image on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: "3.19.14.187"        # <-- HARD-CODED FOR TESTING
+          host: "3.19.14.187"
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
           script: |
-            echo "=== Connected to EC2 ==="
-            echo "Current directory:"
-            pwd
-
-            echo "Navigating to app directory..."
-            cd /home/ubuntu/app
-
-            echo "Listing uploaded files:"
-            ls -la
-
-            echo "Stopping old container (if exists)..."
+            cd ${{ secrets.EC2_PATH }}
             sudo docker stop travelbuddy || true
-
-            echo "Removing old container (if exists)..."
             sudo docker rm travelbuddy || true
-
-            echo "Building Docker image..."
             sudo docker build -t travelbuddy-app .
-
-            echo "Running the container..."
             sudo docker run -d --name travelbuddy -p 8000:8000 --env-file .env travelbuddy-app
-
-            echo "Setting restart policy..."
             sudo docker update --restart unless-stopped travelbuddy
-
-            echo "=== Deployment Finished Successfully ==="
