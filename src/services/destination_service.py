@@ -8,7 +8,7 @@ from config.databse import db, users_collection, destinations_collection, recomm
 from config.settings import settings
 
 # AI model setup (OpenAI embeddings)
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY_OTHER"))
 EMBED_MODEL = "text-embedding-3-small"
 
 

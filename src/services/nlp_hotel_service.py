@@ -7,7 +7,7 @@ from dateparser import parse as parse_date
 from fastapi import HTTPException
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY_OTHER"))
 
 
 def extract_hotel_search_params(user_input: str):

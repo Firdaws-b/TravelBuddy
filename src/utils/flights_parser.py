@@ -10,12 +10,12 @@ from openai import OpenAI
 from src.models.flights_model import FlightsListSearchRequest, FlightInfoRequest
 
 load_dotenv()
-open_ai_key = os.getenv("OPENAI_CLIENT_ID")
+OPEN_AI_KEY = os.getenv('OPENAI_API_KEY_OTHER')
 
 class FlightQueryParser:
     def __init__(self):
         # Use OpenAI model
-        self.client = OpenAI(api_key=open_ai_key)
+        self.client = OpenAI(api_key=OPEN_AI_KEY)
         self.model = "gpt-4o-mini"
 
     def normalize_flight_input(self, raw_fields: dict) -> FlightsListSearchRequest:
