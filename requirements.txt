@@ -1,7 +1,3 @@
-# Lightweight ML stack
-tensorflow-cpu==2.20.0
-torch==2.9.1
-
 # Core requirements
 certifi~=2025.10.5
 pymongo~=3.11.0
@@ -17,7 +13,7 @@ passlib
 PyJWT
 
 # Natural language + AI
-transformers     # lightweight, will work with CPU TF + CPU torch
+transformers   
 langchain~=0.3.20
 langchain-openai~=0.3.8
 
