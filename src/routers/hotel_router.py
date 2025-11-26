@@ -1,8 +1,9 @@
 import logging
 
 from bson import ObjectId
-from fastapi import APIRouter, Query, HTTPException, Body, Path, Depends
+from fastapi import APIRouter, HTTPException, Body, Path, Depends
 from src.services.nlp_hotel_service import extract_hotel_search_params
+from src.services.user_service import get_current_user
 from config.databse import hotel_bookings_collection
 from src.models.hotel_model import BookingCreate, BookingUpdate, HotelModel
 from src.services.hotel_service import (
@@ -49,8 +50,8 @@ def create_user_booking(
         ...,
         example={
             "hotel_id": "ChIJAfBnl0EayUwRqA8gLblTR_4",
-            "check_in": "2025-11-15",
-            "check_out": "2025-11-20",
+            "check_in": "2025-11-26",
+            "check_out": "2025-11-28",
             "adults": 2,
             "children": 0
         },
