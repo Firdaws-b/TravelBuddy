@@ -1,0 +1,36 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: ["master"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: "3.19.14.187"
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          source: "."
+          target: ${{ secrets.EC2_PATH }}
+
+      - name: Build Docker Container on EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: "3.19.14.187"
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            cd ${{ secrets.EC2_PATH }}
+            sudo docker stop travelbuddy || true
+            sudo docker rm travelbuddy || true
+            sudo docker build -t travelbuddy-app .
+            sudo docker run -d --name travelbuddy -p 8000:8000 --env-file .env travelbuddy-app
+            sudo docker update --restart unless-stopped travelbuddy

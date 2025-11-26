@@ -13,7 +13,7 @@ passlib
 PyJWT
 
 # Natural language + AI
-transformers
+transformers   
 langchain~=0.3.20
 langchain-openai~=0.3.8
 

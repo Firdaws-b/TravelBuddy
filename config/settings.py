@@ -9,6 +9,6 @@ class Settings:
     HF_TOKEN: str = os.getenv("HF_TOKEN", "")
     RAPIDAPI_HOST = os.getenv("RAPIDAPI_HOST")
     RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY_OTHER")
 
 settings = Settings()
