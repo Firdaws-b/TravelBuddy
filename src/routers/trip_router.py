@@ -49,7 +49,7 @@ async def regenerate_itinerary(trip_id: str, user_feedback: UserFeedback, curren
     return await regenerate_itinerary_service(trip_id, user_feedback.user_feedback, current_user["email"])
 
 
-# TODO EXPORT THE GENERATED TRIP INTO A PDF FILE WITH ALL TRIP DETAILS
+
 
 
 

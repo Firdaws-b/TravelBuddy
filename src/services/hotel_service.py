@@ -6,6 +6,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from config.settings import Settings
 from config.databse import users_collection, hotels_collection, hotel_bookings_collection
+from src.models.hotel_model import HotelModel
 
 RAPIDAPI_HOST = Settings.RAPIDAPI_HOST
 RAPIDAPI_KEY = Settings.RAPIDAPI_KEY
@@ -53,7 +54,13 @@ def search_hotels(q, check_in_date, check_out_date, adults, children, currency, 
         })
 
     upsert_hotels(hotels_summary)
-    return data
+    hotels = []
+
+    for hotel in hotels_summary:
+        hotels.append(HotelModel(name=hotel["name"], description=hotel["description"], rating=hotel["rating"],
+                                 price_per_night=hotel["price"], city=hotel["city"], currency=hotel["currency"]))
+    return hotels
+    # return hotels_summary
 
 
 
