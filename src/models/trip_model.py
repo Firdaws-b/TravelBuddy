@@ -52,7 +52,11 @@ class TripSummaryModel(BaseModel):
     overall_cost: float
 
 class UpdateTripModel(BaseModel):
-    duration:float
-    budget: float
-    number_of_travelers: int
-    planned_date_time: datetime
+    duration: Optional[int] = None
+    budget: Optional[float] = None           # user update
+    overall_cost: Optional[float] = None     # internal update
+    number_of_travelers: Optional[int] = None
+    planned_date_time: Optional[datetime] = None
+
+
+

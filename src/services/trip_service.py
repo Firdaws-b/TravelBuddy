@@ -55,49 +55,72 @@ def get_planned_trip_service(trip_id, current_user_email_address):
         raise HTTPException(status_code=404, detail="Trip not found")
     return trip
 
-# update a planned trip
-async def update_trip_service(trip_id, duration, budget, number_of_travelers, planned_date_time, user_email_address):
+async def update_trip_service(
+    trip_id,
+    duration,
+    budget,
+    number_of_travelers,
+    planned_date_time,
+    user_email_address
+):
     trip = trips_collection.find_one({"trip_id": trip_id, "user_email_address": user_email_address})
     if not trip:
-        raise HTTPException(status_code=404, detail=f"Trip with ID: {trip_id} does not exist")
-    trips_collection.update_one(
-            {"trip_id": trip_id},
-            {"$set":{"duration": duration,"budget": budget,
-                     "number_of_travelers": number_of_travelers,
-                     "planned_date_time": planned_date_time,
-                    }}
-        )
-    # generate a new itinerary with the new
-    # updated fields: duration, budget, planned_date_time,
-    #                 and number of travelers
-    itinerary = await generate_itinerary(trip["destination"], duration, number_of_travelers, budget)
-    trips_collection.update_one(
-            {"trip_id": trip_id},
-            {"$set": {"generated_itinerary": [day.model_dump() for day in itinerary]}}
-        )
-    updated_trip = PlannedTripModel(
-            user_email_address=trip["user_email_address"],
-            destination=trip["destination"],
-            duration=duration,
-            number_of_travelers=number_of_travelers,
-            generated_itinerary=itinerary,
-            overall_cost=budget,
-            cost_per_traveler=budget / number_of_travelers,
-            planned_date_time=planned_date_time
-        )
+        raise HTTPException(status_code=404, detail=f"Trip with ID {trip_id} not found")
 
-    # update user_planned trips
-    users_collection.update_one(
-            {"email": trip["user_email_address"], "planned_trips.trip_id": trip_id},
-            {"$set": {"planned_trips.$.generated_itinerary": [day.model_dump() for day in itinerary],
-                      "planned_trips.$.duration": duration,
-                      "planned_trips.$.number_of_travelers": number_of_travelers,
-                      "planned_trips.$.overall_cost": budget,
-                      "planned_trips.$.cost_per_traveler": budget / duration,
-                      "planned_trips.$.planned_date_time": planned_date_time
-                      }}
+    # Keep old values if new ones not provided
+    updated_duration = duration if duration is not None else trip["duration"]
+    updated_budget = budget if budget is not None else trip["overall_cost"]
+    updated_num_travelers = number_of_travelers if number_of_travelers is not None else trip["number_of_travelers"]
+    updated_date = planned_date_time if planned_date_time is not None else trip["planned_date_time"]
+
+    # Update DB
+    trips_collection.update_one(
+        {"trip_id": trip_id},
+        {"$set": {
+            "duration": updated_duration,
+            "budget": updated_budget,
+            "number_of_travelers": updated_num_travelers,
+            "planned_date_time": updated_date
+        }}
     )
-    return updated_trip
+
+    # Re-generate itinerary (only based on updated fields)
+    itinerary = await generate_itinerary(
+        trip["destination"],
+        updated_duration,
+        updated_num_travelers,
+        updated_budget
+    )
+
+    trips_collection.update_one(
+        {"trip_id": trip_id},
+        {"$set": {"generated_itinerary": [day.model_dump() for day in itinerary]}}
+    )
+
+    # Update user’s planned trips list
+    users_collection.update_one(
+        {"email": trip["user_email_address"], "planned_trips.trip_id": trip_id},
+        {"$set": {
+            "planned_trips.$.duration": updated_duration,
+            "planned_trips.$.number_of_travelers": updated_num_travelers,
+            "planned_trips.$.overall_cost": updated_budget,
+            "planned_trips.$.cost_per_traveler": updated_budget / updated_num_travelers,
+            "planned_trips.$.planned_date_time": updated_date,
+            "planned_trips.$.generated_itinerary": [day.model_dump() for day in itinerary]
+        }}
+    )
+
+    return PlannedTripModel(
+        user_email_address=trip["user_email_address"],
+        destination=trip["destination"],
+        duration=updated_duration,
+        number_of_travelers=updated_num_travelers,
+        generated_itinerary=itinerary,
+        overall_cost=updated_budget,
+        cost_per_traveler=updated_budget / updated_num_travelers,
+        planned_date_time=updated_date
+    )
+
 
 
 def cancel_trip_service(trip_id, current_user_email_address):

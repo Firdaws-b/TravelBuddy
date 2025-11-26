@@ -29,6 +29,13 @@ class BookingCreate(BaseModel):
             raise ValueError("check_out must be after check_in")
         return self
 
+class HotelModel(BaseModel):
+    name: str
+    description: str
+    rating: float
+    price_per_night: float
+    city: str
+    currency: str
 
 class BookingUpdate(BaseModel):
     check_in: Optional[str] = Field(None, example="2025-11-18")
@@ -53,3 +60,5 @@ class BookingUpdate(BaseModel):
         if co <= ci:
             raise ValueError("check_out must be after check_in")
         return self
+
+

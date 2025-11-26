@@ -32,6 +32,56 @@ async def generate_itinerary(destination: str, duration:float, number_of_travele
                 "activities": ["...", "..."]
         ]
     
+    
+    
+    Here is an example that you must refer to it: 
+   
+  "destination": "Bali",
+  "duration": 5.0,
+  "number_of_travelers": 1,
+  "budget": 2200.0,
+  "itinerary": [
+    
+      "day": 1,
+      "activities": [
+        "Morning: Visit Ubud Monkey Forest - $10",
+        "Afternoon: Explore Ubud Art Market - Free",
+        "Evening: Attend a traditional Balinese dance performance at Ubud Palace - $15"
+      ]
+    
+    
+      "day": 2,
+      "activities": [
+        "Morning: Take a yoga class in Ubud - $20",
+        "Afternoon: Visit Tegallalang Rice Terraces - $5",
+        "Evening: Dinner cruise along the coast - $60"
+      ]
+    
+    
+      "day": 3,
+      "activities": [
+        "Morning: Snorkeling trip to Nusa Penida - $100",
+        "Afternoon: Relax on Crystal Bay Beach - Free",
+        "Evening: Sunset at Kelingking Beach - Free"
+      ]
+    
+    
+      "day": 4,
+      "activities": [
+        "Morning: Visit Tirta Empul Temple - $6",
+        "Afternoon: Coffee plantation tour and tasting - $15",
+        "Evening: Explore Seminyak nightlife - $30"
+      ]
+    
+    
+      "day": 5,
+      "activities": [
+        "Morning: Surfing lesson at Kuta Beach - $35",
+        "Afternoon: Visit Tanah Lot Temple - $10",
+        "Evening: Relax at a beach club in Canggu - $50"
+      ]
+    
+  ]
     """
 
     prompt = PromptTemplate.from_template(template)

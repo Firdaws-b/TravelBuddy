@@ -27,6 +27,8 @@ def extract_hotel_search_params(user_input: str):
     - Return ONLY valid JSON, no explanation or text.
     - All dates MUST be ISO format YYYY-MM-DD if you can determine them.
     - If a date cannot be determined, output null.
+    - If you see a city’s name with two words or more, replace all spaces with hyphens (-) to form a single string. 
+      Keep the letters and punctuation intact otherwise. Return the hyphenated name in quotes.
     - Required keys: q, check_in_date, check_out_date, adults, children, currency, gl, hl.
     - currency="CAD", gl="us", hl="en".
 
@@ -36,6 +38,16 @@ def extract_hotel_search_params(user_input: str):
 
     Input: "Hotels in Tokyo from July 4 to July 8 for 1 adult and 1 child"
     Output: {{"q":"Tokyo","check_in_date":"2025-07-04","check_out_date":"2025-07-08","adults":1,"children":1,"currency":"CAD","gl":"us","hl":"en"}}
+    
+    Input: "Hotels in Los Angeles from March 10 to March 15 for 2 adults"
+    Output: {{"q":"Los-Angeles","check_in_date":"2025-03-10","check_out_date":"2025-03-15","adults":2,"children":0,"currency":"CAD","gl":"us","hl":"en"}}
+
+    Input: "Hotels in Mexico City from April 1 to April 5 for 1 adult"
+    Output: {{"q":"Mexico-City","check_in_date":"2025-04-01","check_out_date":"2025-04-05","adults":1,"children":0,"currency":"CAD","gl":"us","hl":"en"}}
+
+    Input: "Hotels in Hong Kong from May 10 to May 15 for 2 adults and 1 child"
+    Output: {{"q":"Hong-Kong","check_in_date":"2025-05-10","check_out_date":"2025-05-15","adults":2,"children":1,"currency":"CAD","gl":"us","hl":"en"}}
+
 
     YOUR TURN.
     Input: "{user_input}"

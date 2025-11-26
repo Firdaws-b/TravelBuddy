@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from src.models.trip_model import PlannedTripModel, PlanATrip, TripSummaryModel, UpdateTripModel, ItineraryDayModel
 from src.models.user_model import UserFeedback, UserProfile
 from src.services.trip_service import plan_trip_service, get_trips_service, get_planned_trip_service, update_trip_service, cancel_trip_service, regenerate_itinerary_service, get_itinerary_service
@@ -49,7 +49,7 @@ async def regenerate_itinerary(trip_id: str, user_feedback: UserFeedback, curren
     return await regenerate_itinerary_service(trip_id, user_feedback.user_feedback, current_user["email"])
 
 
-# TODO EXPORT THE GENERATED TRIP INTO A PDF FILE WITH ALL TRIP DETAILS
+
 
 
 

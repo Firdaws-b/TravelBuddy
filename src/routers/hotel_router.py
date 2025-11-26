@@ -5,27 +5,27 @@ from fastapi import APIRouter, HTTPException, Body, Path, Depends
 from src.services.nlp_hotel_service import extract_hotel_search_params
 from src.services.user_service import get_current_user
 from config.databse import hotel_bookings_collection
-from src.models.hotel_model import BookingCreate, BookingUpdate
+from src.models.hotel_model import BookingCreate, BookingUpdate, HotelModel
 from src.services.hotel_service import (
     search_hotels,  
     get_user_by_id, 
     create_booking_for_user,
     get_bookings_by_user_id,
     update_booking_for_user)
-
+from src.services.user_service import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-@router.post("/hotels", tags=["hotels"])
+@router.post("/hotels", tags=["hotels"], response_model=list[HotelModel])
 def hotel_search_with_nlp(
     user_input: str = Body(
         ...,
         embed=True,
-        example="Find hotels in Toronto from Dec 31 to Jan 2 for 2 adults"
-    ),
-    current_user: dict = Depends(get_current_user)
-):
+        example="Find hotels in Montreal from November 15 to November 20 for 2 adults"
+    )
+,
+        current_user: dict = Depends(get_current_user)):
     try:
         # 1. Extract data using NLP model
         extracted = extract_hotel_search_params(user_input)
@@ -33,12 +33,13 @@ def hotel_search_with_nlp(
             raise HTTPException(status_code=400, detail="Destination not found in user input")
 
         # 2. Call hotel API with structured data
-        response = search_hotels(**extracted)
+        hotels = search_hotels(**extracted)
 
-        return {"query": extracted, "results": response}
+        return hotels
         # return {"input": user_input, "result": extracted}
 
     except Exception as e:
+        print("Error in hotels service", e)
         raise HTTPException(status_code=500, detail=str(e))
     
 
@@ -55,9 +56,8 @@ def create_user_booking(
             "children": 0
         },
         description="Minimal booking details"
-    ),
-    current_user: dict = Depends(get_current_user)
-):
+    )
+,current_user: dict = Depends(get_current_user)):
     try:
         user = get_user_by_id(user_id)
         if not user:
@@ -108,9 +108,8 @@ def get_user_bookings(user_id: str = Path(..., description="MongoDB ObjectId of 
 def update_booking(
     user_id :  str = Path(..., description="MongoDB ObjectId of the user"),
     confirmation_number: str = Path(..., description="Booking confirmation number"),
-    booking_update: BookingUpdate = Body(..., description="Fields to update"),
-    current_user: dict = Depends(get_current_user)
-):
+    booking_update: BookingUpdate = Body(..., description="Fields to update")
+,current_user: dict = Depends(get_current_user)):
     try:
         user = get_user_by_id(user_id)
         if not user:
@@ -131,9 +130,8 @@ def update_booking(
 @router.delete("/users/{user_id}/hotel-bookings/confirmation/{confirmation_number}", tags=["hotels"])
 def delete_booking_by_confirmation(
     user_id: str = Path(..., description="MongoDB ObjectId of the user"),
-    confirmation_number: str = Path(..., description="Booking confirmation number"),
-    current_user: dict = Depends(get_current_user)
-):
+    confirmation_number: str = Path(..., description="Booking confirmation number")
+,current_user: dict = Depends(get_current_user)):
     try:
         # Validate user
         user = get_user_by_id(user_id)
