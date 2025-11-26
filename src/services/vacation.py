@@ -4,7 +4,8 @@ from fastapi import HTTPException, Query
 from src.utils.http_helpers import request_with_retry
 from src.utils.vacation_extractor import hybrid_extract
 
-URL = "http://3.143.233.26:8000/api/v1"
+
+URL="http://3.19.14.187:8000/api/v1"
 async def get_recommendations( query: str = Query(..., description="Describe what kind of destination you want"),
     limit: int = Query(5, ge=1, le=20),
     user_id: str = Query(None, description="Optional user ID for personalized results")

@@ -37,6 +37,7 @@ def recommend_destinations_api(
         results = recommend_destinations(query, limit, user_prefs)
         return {"query": query, "results": results}
     except Exception as e:
+        print("Exception is ****** ", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -52,6 +53,7 @@ def create_recommendation_api(
     try:
         return create_recommendation(user_id, query, limit)
     except Exception as e:
+        print("Exception is ****** ", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
