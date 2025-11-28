@@ -1,6 +1,6 @@
 ## 🧳 TravelBuddy
 ## **Description**: 
-TravelBuddy is a cloud-based, AI-driven travel planning SaaS that helps users generate complete trip itineraries, search flights, hotels, transportation, and activities through a unified microservices architecture.
+TravelBuddy is a cloud-based, AI-driven travel planning SaaS that helps users generate complete trip itineraries, search flights, hotels and activities through a unified microservices architecture.
 The platform uses OpenAI models, LangChain, distributed orchestration, and modern DevOps practices to deliver consistent, scalable, real-time travel planning.
 
 ## **Microservices**
